@@ -7,21 +7,22 @@ import { MetricsDashboardService } from './metrics/metrics-dashboard.service';
 import { MonitoringController } from './monitoring.controller';
 import { AuthModule } from '../auth/auth.module';
 import { ApiKeysModule } from '../api-keys/api-keys.module';
+import { CircuitBreakerService } from '../http/circuit-breaker.service';
 
 @Global()
 @Module({
-  imports: [
-    AuthModule,
-    ApiKeysModule,
-    BullModule.registerQueue({ name: 'transactions' }),
-  ],
+  imports: [AuthModule, ApiKeysModule],
   providers: [
     PrometheusService,
     MetricsInterceptor,
-    QueueMetricsService,
-    MetricsDashboardService,
+    {
+      provide: CircuitBreakerService,
+      useFactory: (prometheus: PrometheusService) =>
+        new CircuitBreakerService(prometheus.registry),
+      inject: [PrometheusService],
+    },
   ],
   controllers: [MonitoringController],
-  exports: [PrometheusService, MetricsInterceptor, MetricsDashboardService],
+  exports: [PrometheusService, MetricsInterceptor, CircuitBreakerService],
 })
 export class MonitoringModule {}

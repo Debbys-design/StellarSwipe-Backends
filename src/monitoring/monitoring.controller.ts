@@ -1,8 +1,7 @@
-import { Controller, Get, Header, Req, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Controller, Delete, Get, Header, Param, UseGuards } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PrometheusService } from './metrics/prometheus.service';
-import { MetricsDashboardService, MetricsSummary } from './metrics/metrics-dashboard.service';
+import { CircuitBreakerService } from '../http/circuit-breaker.service';
 import { HealthMetricsAuthGuard } from '../common/guards/health-metrics-auth.guard';
 
 @ApiTags('monitoring')
@@ -11,7 +10,7 @@ import { HealthMetricsAuthGuard } from '../common/guards/health-metrics-auth.gua
 export class MonitoringController {
   constructor(
     private readonly prometheus: PrometheusService,
-    private readonly metricsDashboard: MetricsDashboardService,
+    private readonly circuitBreaker: CircuitBreakerService,
   ) {}
 
   /**
@@ -22,32 +21,27 @@ export class MonitoringController {
    */
   @Get()
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
-  @ApiOperation({ summary: 'Prometheus metrics scrape endpoint (text/plain)' })
-  @ApiResponse({
-    status: 200,
-    description:
-      'All metrics in Prometheus text format. Compatible with Prometheus, ' +
-      'Grafana, DataDog, and any OpenMetrics-compatible scraper.',
-  })
+  @ApiOperation({ summary: 'Prometheus metrics scrape endpoint' })
   async getMetrics(): Promise<string> {
     return this.prometheus.getMetrics();
   }
 
-  /**
-   * Human-readable dashboard summary grouping all exported metrics by category:
-   * http, queues, cache, database, and business.
-   */
-  @Get('dashboard')
-  @ApiOperation({
-    summary: 'Metrics dashboard summary grouped by category',
-    description:
-      'Returns a JSON document listing every exported metric name, ' +
-      'grouped by category (http, queues, cache, database, business). ' +
-      'Includes a scrapeUrl pointing to the raw Prometheus endpoint.',
+  @Get('circuit-breakers')
+  @ApiOperation({ summary: 'Get current state of all circuit breakers' })
+  @ApiResponse({
+    status: 200,
+    description: 'Map of circuit name → state, failures, successes, timestamps',
   })
-  @ApiResponse({ status: 200, description: 'Metrics category summary' })
-  async getDashboard(@Req() req: Request): Promise<MetricsSummary> {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    return this.metricsDashboard.getDashboardSummary(baseUrl);
+  getCircuitBreakers(): Record<string, unknown> {
+    return this.circuitBreaker.getAllStats();
+  }
+
+  @Delete('circuit-breakers/:name')
+  @ApiOperation({ summary: 'Manually reset a named circuit breaker to CLOSED' })
+  @ApiParam({ name: 'name', description: 'Circuit breaker name (e.g. stellar-horizon)' })
+  @ApiResponse({ status: 200, description: 'Circuit reset successfully' })
+  resetCircuitBreaker(@Param('name') name: string): { reset: boolean; circuit: string } {
+    this.circuitBreaker.reset(name);
+    return { reset: true, circuit: name };
   }
 }
