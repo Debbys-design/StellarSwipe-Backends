@@ -12,6 +12,7 @@ import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { UsersService } from '../users/users.service';
 import { AuthAuditService } from './auth-audit.service';
+import { SessionManagerService } from './session/session-manager.service';
 import { Request } from 'express';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class AuthService {
         private jwtService: JwtService,
         private usersService: UsersService,
         private authAuditService: AuthAuditService,
+        private sessionManager: SessionManagerService,
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
     ) { }
 
@@ -33,7 +35,7 @@ export class AuthService {
         return { message };
     }
 
-    async verifySignature(dto: VerifySignatureDto, req?: Request): Promise<{ accessToken: string }> {
+    async verifySignature(dto: VerifySignatureDto, req?: Request): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
         const { publicKey, signature, message } = dto;
 
         // 1. Retrieve challenge from Redis
@@ -69,13 +71,15 @@ export class AuthService {
         // 4. Find or create user
         const user = await this.usersService.findOrCreateByWalletAddress(publicKey);
 
-        // 5. Generate JWT using Internal User ID
-        const payload: JwtPayload = { sub: user.id };
-        const accessToken = this.jwtService.sign(payload);
+        // 5. Issue secure token pair with session tracking
+        const tokens = await this.sessionManager.issueTokens(user.id, publicKey, {
+            ip: req?.ip,
+            userAgent: req?.headers?.['user-agent'],
+        });
 
         if (req) await this.authAuditService.logLogin(user.id, req);
 
-        return { accessToken };
+        return tokens;
     }
 
     async register(dto: RegisterDto): Promise<{ user: any; accessToken: string }> {
