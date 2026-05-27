@@ -8,8 +8,14 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TradesService } from './trades.service';
+import { TradeOutcomeService } from './trade-outcome.service';
+import { TradeOutcomeQueryDto } from './dto/trade-outcome-query.dto';
+import { TradeHistoryService } from './trade-history.service';
 import { RiskManagerService } from './services/risk-manager.service';
 import { ExecuteTradeDto, CloseTradeDto } from './dto/execute-trade.dto';
 import { PartialCloseDto } from './partial-close/dto/partial-close.dto';
@@ -21,13 +27,16 @@ import {
   UserTradesSummaryDto,
   CloseTradeResultDto,
 } from './dto/trade-result.dto';
+import { PaginatedTradeHistoryDto } from './trade-history.service';
 
 @Controller('trades')
 export class TradesController {
   constructor(
     private readonly tradesService: TradesService,
+    private readonly tradeHistoryService: TradeHistoryService,
     private readonly riskManager: RiskManagerService,
     private readonly partialCloseService: PartialCloseService,
+    private readonly tradeOutcomeService: TradeOutcomeService,
   ) { }
 
   /**
@@ -83,7 +92,31 @@ export class TradesController {
   }
 
   /**
-   * Get user's trades with filtering
+   * Get user's trade history with optional filtering and pagination.
+   * Supports status, date-range (startDate/endDate), limit, and offset.
+   * GET /trades/user/:userId/history
+   */
+  @Get('user/:userId/history')
+  async getUserTradeHistory(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+  ): Promise<PaginatedTradeHistoryDto> {
+    return this.tradeHistoryService.getUserTradeHistory({
+      userId,
+      status,
+      startDate,
+      endDate,
+      limit,
+      offset,
+    });
+  }
+
+  /**
+   * Get user's trades with filtering (legacy – prefer /history for new clients)
    * GET /trades/user/:userId
    */
   @Get('user/:userId')
@@ -102,25 +135,25 @@ export class TradesController {
   }
 
   /**
-   * Get user's trading summary/statistics
+   * Get user's trading summary/statistics (DB-aggregated)
    * GET /trades/user/:userId/summary
    */
   @Get('user/:userId/summary')
   async getUserTradesSummary(
     @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<UserTradesSummaryDto> {
-    return this.tradesService.getUserTradesSummary(userId);
+    return this.tradeHistoryService.getUserTradesSummary(userId);
   }
 
   /**
-   * Get user's open positions
+   * Get user's open positions (DB-filtered)
    * GET /trades/user/:userId/positions
    */
   @Get('user/:userId/positions')
   async getOpenPositions(
     @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<TradeDetailsDto[]> {
-    return this.tradesService.getOpenPositions(userId);
+    return this.tradeHistoryService.getOpenPositions(userId);
   }
 
   /**
@@ -131,7 +164,7 @@ export class TradesController {
   async getTradesBySignal(
     @Param('signalId', ParseUUIDPipe) signalId: string,
   ): Promise<TradeDetailsDto[]> {
-    return this.tradesService.getTradesBySignal(signalId);
+    return this.tradeHistoryService.getTradesBySignal(signalId);
   }
 
   /**
@@ -141,5 +174,28 @@ export class TradesController {
   @Get('risk/parameters')
   getRiskParameters() {
     return this.riskManager.getRiskParameters();
+  }
+
+  /**
+   * Get final outcome for a single trade (polling endpoint)
+   * GET /trades/:tradeId/outcome
+   */
+  @Get(':tradeId/outcome')
+  @UseGuards(JwtAuthGuard)
+  getOutcome(
+    @Param('tradeId', ParseUUIDPipe) tradeId: string,
+    @Request() req: any,
+  ) {
+    return this.tradeOutcomeService.getOutcome(tradeId, req.user.id);
+  }
+
+  /**
+   * Query trade outcomes by user / transactionId / status
+   * GET /trades/outcomes
+   */
+  @Get('outcomes')
+  @UseGuards(JwtAuthGuard)
+  queryOutcomes(@Query() query: TradeOutcomeQueryDto, @Request() req: any) {
+    return this.tradeOutcomeService.queryOutcomes(query, req.user.id);
   }
 }

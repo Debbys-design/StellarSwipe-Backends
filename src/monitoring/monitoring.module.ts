@@ -1,12 +1,28 @@
 import { Module, Global } from '@nestjs/common';
+import { BullModule } from '@nestjs/bull';
 import { PrometheusService } from './metrics/prometheus.service';
 import { MetricsInterceptor } from './metrics/metrics.interceptor';
+import { QueueMetricsService } from './metrics/queue-metrics.service';
+import { MetricsDashboardService } from './metrics/metrics-dashboard.service';
 import { MonitoringController } from './monitoring.controller';
+import { AuthModule } from '../auth/auth.module';
+import { ApiKeysModule } from '../api-keys/api-keys.module';
+import { CircuitBreakerService } from '../http/circuit-breaker.service';
 
 @Global()
 @Module({
-  providers: [PrometheusService, MetricsInterceptor],
+  imports: [AuthModule, ApiKeysModule],
+  providers: [
+    PrometheusService,
+    MetricsInterceptor,
+    {
+      provide: CircuitBreakerService,
+      useFactory: (prometheus: PrometheusService) =>
+        new CircuitBreakerService(prometheus.registry),
+      inject: [PrometheusService],
+    },
+  ],
   controllers: [MonitoringController],
-  exports: [PrometheusService, MetricsInterceptor],
+  exports: [PrometheusService, MetricsInterceptor, CircuitBreakerService],
 })
 export class MonitoringModule {}

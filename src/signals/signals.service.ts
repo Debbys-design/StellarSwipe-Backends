@@ -2,20 +2,32 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Signal, SignalStatus, SignalType } from './entities/signal.entity';
+import { CacheService, CachePrefix } from '../cache/cache.service';
+import { SignalQuotaService } from './quota/signal-quota.service';
 
 @Injectable()
 export class SignalsService {
 
+  private static readonly FEED_KEY = `${CachePrefix.SIGNAL}feed`;
+
   constructor(
     @InjectRepository(Signal)
     private readonly signalRepository: Repository<Signal>,
+    private readonly cacheService: CacheService,
+    private readonly quotaService: SignalQuotaService,
   ) {}
 
   async create(createSignalDto: any): Promise<Signal> {
-    // Validate required fields
     if (!createSignalDto.providerId || !createSignalDto.baseAsset || !createSignalDto.counterAsset) {
       throw new BadRequestException('providerId, baseAsset, and counterAsset are required');
     }
+
+    // Enforce quota — throws ForbiddenException when exceeded
+    await this.quotaService.checkAndConsume(
+      createSignalDto.providerId,
+      createSignalDto.tier ?? 'basic',
+      createSignalDto.isStaked ?? false,
+    );
 
     const signal = this.signalRepository.create({
       providerId: createSignalDto.providerId,
@@ -31,7 +43,7 @@ export class SignalsService {
       closePrice: null,
       copiersCount: 0,
       totalCopiedVolume: '0',
-      expiresAt: createSignalDto.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
+      expiresAt: createSignalDto.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       gracePeriodEndsAt: null,
       closedAt: null,
       rationale: createSignalDto.rationale || null,
@@ -46,18 +58,29 @@ export class SignalsService {
   }
 
   async findOne(id: string): Promise<Signal | null> {
-    return this.signalRepository.findOneBy({ id });
+    const key = `${CachePrefix.SIGNAL}${id}`;
+    return this.cacheService.getOrSetWithLock(
+      key,
+      () => this.signalRepository.findOneBy({ id }),
+      'signal',
+    );
   }
 
   async findAll(): Promise<Signal[]> {
-    return this.signalRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 100,
-    });
+    return this.cacheService.getOrSetWithLock(
+      SignalsService.FEED_KEY,
+      () => this.signalRepository.find({ order: { createdAt: 'DESC' }, take: 100 }),
+      'signal',
+    );
   }
 
   async updateSignalStatus(id: string, status: SignalStatus): Promise<Signal | null> {
     await this.signalRepository.update(id, { status });
-    return this.findOne(id);
+    // Invalidate stale cache entries on write
+    await Promise.all([
+      this.cacheService.del(`${CachePrefix.SIGNAL}${id}`),
+      this.cacheService.del(SignalsService.FEED_KEY),
+    ]);
+    return this.signalRepository.findOneBy({ id });
   }
 }

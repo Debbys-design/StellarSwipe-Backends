@@ -16,6 +16,10 @@ import { UsersModule } from '../users/users.module';
 import { TwoFactor } from './two-factor/entities/two-factor.entity';
 import { TwoFactorService } from './two-factor/two-factor.service';
 import { TwoFactorController } from './two-factor/two-factor.controller';
+import { AuthAuditService } from './auth-audit.service';
+import { AuditModule } from '../audit-log/audit.module';
+import { SessionManagerService } from './session/session-manager.service';
+import { SessionCleanupService } from './session/session-cleanup.service';
 
 @Module({
   imports: [
@@ -31,8 +35,10 @@ import { TwoFactorController } from './two-factor/two-factor.controller';
       }),
     }),
     CacheModule,
+    AuditModule,
     TypeOrmModule.forFeature([User, SocialConnection, TwoFactor]),
     UsersModule,
+    EmailModule,
   ],
   controllers: [AuthController, SocialAuthController, TwoFactorController],
   providers: [
@@ -41,7 +47,17 @@ import { TwoFactorController } from './two-factor/two-factor.controller';
     JwtAuthGuard,
     TwitterOauthService,
     TwoFactorService,
+    AuthAuditService,
+    SessionManagerService,
+    SessionCleanupService,
   ],
-  exports: [AuthService, JwtAuthGuard, TwitterOauthService, TwoFactorService],
+  exports: [
+    AuthService,
+    JwtAuthGuard,
+    TwitterOauthService,
+    TwoFactorService,
+    AuthAuditService,
+    SessionManagerService,
+  ],
 })
 export class AuthModule {}

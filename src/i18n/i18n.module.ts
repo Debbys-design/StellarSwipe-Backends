@@ -8,6 +8,8 @@ import {
 } from 'nestjs-i18n';
 import * as path from 'path';
 import { I18nAppService } from './i18n.service';
+import { I18nResponseInterceptor } from './interceptors/i18n-response.interceptor';
+import { I18nController } from './i18n.controller';
 
 @Module({
   imports: [
@@ -28,7 +30,8 @@ import { I18nAppService } from './i18n.service';
       inject: [ConfigService],
     }),
   ],
-  providers: [I18nAppService],
-  exports: [I18nAppService],
+  controllers: [I18nController],
+  providers: [I18nAppService, I18nResponseInterceptor],
+  exports: [I18nAppService, I18nResponseInterceptor],
 })
 export class I18nModule {}

@@ -11,16 +11,20 @@ import { OcoOrderService } from './services/oco-order.service';
 import { IcebergOrderService } from './services/iceberg-order.service';
 import { StellarConfigService } from '../config/stellar.service';
 import { RiskManagerModule } from '../risk/risk-manager.module';
+import { ComplianceModule } from '../compliance/compliance.module';
 import { BullModule } from '@nestjs/bull';
 import { WebsocketModule } from '../websocket/websocket.module';
 import { TxMonitorService } from './services/tx-monitor.service';
 import { MonitorTransactionsJob } from './jobs/monitor-transactions.job';
 import { PartialCloseService } from './partial-close/partial-close.service';
+import { TradeHistoryService } from './trade-history.service';
+import { TradeOutcomeService } from './trade-outcome.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Trade, AdvancedOrder]),
     RiskManagerModule,
+    ComplianceModule,
     BullModule.registerQueue({
       name: 'transactions',
     }),
@@ -37,8 +41,10 @@ import { PartialCloseService } from './partial-close/partial-close.service';
     OcoOrderService,
     IcebergOrderService,
     PartialCloseService,
+    TradeHistoryService,
+    TradeOutcomeService,
   ],
-  exports: [TradesService, RiskManagerService, OcoOrderService, IcebergOrderService, PartialCloseService],
+  exports: [TradesService, RiskManagerService, OcoOrderService, IcebergOrderService, PartialCloseService, TradeHistoryService, TradeOutcomeService],
 })
 export class TradesModule { }
 
