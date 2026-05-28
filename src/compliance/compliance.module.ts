@@ -31,7 +31,15 @@ import { TradeEligibilityController } from './trade-eligibility.controller';
   imports: [
     ConfigModule,
     ScheduleModule.forRoot(),
-    TypeOrmModule.forFeature([ComplianceLog, SuspiciousActivity, Trade, User, Signal, AuditLog]),
+    TypeOrmModule.forFeature([
+      ComplianceLog,
+      SuspiciousActivity,
+      Trade,
+      User,
+      Signal,
+      AuditLog,
+      TradeEligibilityDecision,
+    ]),
     BullModule.registerQueue({ name: AML_QUEUE }),
     TransactionLimitsModule,
   ],
