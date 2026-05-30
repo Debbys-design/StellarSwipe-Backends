@@ -72,6 +72,7 @@ import { PortfolioModule } from './portfolio/portfolio.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AuditModule } from './audit-log/audit.module';
 import { SocialExportModule } from './social-export/social-export.module';
+import { LowBalanceAlertModule } from './alerts/low-balance-alert.module';
  main
  main
  main
@@ -207,6 +208,7 @@ import { SocialExportModule } from './social-export/social-export.module';
     NotificationsModule,
     AuditModule,
     SocialExportModule,
+    LowBalanceAlertModule,
  main
  main
  main
