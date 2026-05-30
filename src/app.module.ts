@@ -40,6 +40,7 @@ import { ReferralsModule } from './referrals/referrals.module';
 import { EventsModule } from './events/events.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { SecurityModule } from './security/security.module';
+import { ContractJobModule } from './soroban/jobs/contract-job.module';
  main
 
 
@@ -138,6 +139,7 @@ import { SecurityModule } from './security/security.module';
     EventsModule,
     ApiKeysModule,
     SecurityModule,
+    ContractJobModule,
  main
   ],
   providers: [StellarConfigService],
