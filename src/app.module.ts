@@ -53,13 +53,13 @@ import { CompetitionsModule } from './competitions/competitions.module';
 import { NftModule } from './nft/nft.module';
 import { HealthModule } from './health/health.module';
 import { RateLimitModule } from './common/rate-limit.module';
- feature/295-discord-community-integration
+// feature/295-discord-community-integration
 import { DiscordBotModule } from './integrations/discord/discord-bot.module';
 
- feature/294-telegram-bot-integration
+// feature/294-telegram-bot-integration
 import { TelegramBotModule } from './integrations/telegram/telegram-bot.module';
 
- feature/293-mobile-api-optimizations
+// feature/293-mobile-api-optimizations
 import { MobileModule } from './mobile/mobile.module';
 
 import { AutomationModule } from './integrations/automation-platforms/automation.module';
@@ -74,9 +74,8 @@ import { AuditModule } from './audit-log/audit.module';
 import { AssetsModule } from './assets/assets.module';
 import { SocialExportModule } from './social-export/social-export.module';
 import { LowBalanceAlertModule } from './alerts/low-balance-alert.module';
- main
- main
- main
+import { OrdersModule } from './orders/orders.module';
+import { ComplianceAuditExportModule } from './compliance/audit-export/compliance-audit-export.module';
 
 @Module({
   imports: [
@@ -190,13 +189,13 @@ import { LowBalanceAlertModule } from './alerts/low-balance-alert.module';
     NftModule,
     HealthModule,
     RateLimitModule,
- feature/295-discord-community-integration
+    // feature/295-discord-community-integration
     DiscordBotModule,
 
- feature/294-telegram-bot-integration
+    // feature/294-telegram-bot-integration
     TelegramBotModule,
 
- feature/293-mobile-api-optimizations
+    // feature/293-mobile-api-optimizations
     MobileModule,
 
     AutomationModule,
@@ -211,9 +210,8 @@ import { LowBalanceAlertModule } from './alerts/low-balance-alert.module';
     AssetsModule,
     SocialExportModule,
     LowBalanceAlertModule,
- main
- main
- main
+    OrdersModule,
+    ComplianceAuditExportModule,
   ],
   providers: [StellarConfigService],
   exports: [StellarConfigService],
