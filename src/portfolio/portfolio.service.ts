@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Trade, TradeStatus } from '../trades/entities/trade.entity';
+import { User } from '../users/entities/user.entity';
 import { PriceService } from '../shared/price.service';
 import { PositionDetailDto } from './dto/position-detail.dto';
 import { PortfolioSummaryDto, TradeDetail } from './dto/portfolio-summary.dto';
@@ -12,6 +13,9 @@ import { PnlCalculatorService } from './services/pnl-calculator.service';
 import { AddTransactionDto } from './dto/add-transaction.dto';
 import { PnlHistory } from './entities/pnl-history.entity';
 
+// Stellar public key: 56 chars, base32, starts with G
+const STELLAR_ADDRESS_RE = /^G[A-Z2-7]{55}$/;
+
 @Injectable()
 export class PortfolioService {
   constructor(
@@ -19,6 +23,8 @@ export class PortfolioService {
     private tradeRepository: Repository<Trade>,
     @InjectRepository(PnlHistory)
     private pnlHistoryRepository: Repository<PnlHistory>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     private priceService: PriceService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private pnlCalculator: PnlCalculatorService,
@@ -178,6 +184,27 @@ export class PortfolioService {
     // Invalidate portfolio cache for this user
     await this.cacheManager.del(`portfolio_performance_${userId}`);
     return saved;
+  }
+
+  async getWalletSummary(walletAddress: string): Promise<PortfolioSummaryDto & { walletAddress: string }> {
+    if (!STELLAR_ADDRESS_RE.test(walletAddress)) {
+      throw new BadRequestException('Invalid Stellar wallet address format');
+    }
+
+    const cacheKey = `portfolio_wallet_summary_${walletAddress}`;
+    const cached = await this.cacheManager.get<PortfolioSummaryDto & { walletAddress: string }>(cacheKey);
+    if (cached) return cached;
+
+    const user = await this.userRepository.findOne({ where: { walletAddress } });
+    if (!user) {
+      throw new NotFoundException(`No account found for wallet ${walletAddress}`);
+    }
+
+    const summary = await this.getPerformance(user.id);
+    const result = { ...summary, walletAddress };
+
+    await this.cacheManager.set(cacheKey, result, 30000); // 30 s TTL for dashboard loads
+    return result;
   }
 
   async getChartData(

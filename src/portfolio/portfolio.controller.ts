@@ -68,6 +68,17 @@ export class PortfolioController {
     return this.portfolioService.getPerformance(req.user.id);
   }
 
+  @Get('summary/:walletAddress')
+  @ApiOperation({ summary: 'Get portfolio summary by Stellar wallet address' })
+  @ApiResponse({ status: 200, description: 'Portfolio summary including holdings, positions, unrealized P&L, and NAV' })
+  @ApiResponse({ status: 400, description: 'Invalid wallet address format' })
+  @ApiResponse({ status: 404, description: 'No account found for wallet' })
+  async getWalletSummary(
+    @Param('walletAddress') walletAddress: string,
+  ): Promise<PortfolioSummaryDto & { walletAddress: string }> {
+    return this.portfolioService.getWalletSummary(walletAddress);
+  }
+
   @Get('export')
   @ApiOperation({ summary: 'Export trade history as CSV or JSON' })
   @ApiResponse({ status: 200, description: 'Export initiated or completed' })
